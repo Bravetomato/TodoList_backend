@@ -78,7 +78,7 @@ app.get("/:user_code/todos/:no", async (req, res) => {
   res.json({
     resultCode: "S-1",
     msg: "성공",
-    data: todoRows,
+    data: todoRow,
   });
 });
 
@@ -100,7 +100,7 @@ app.delete("/:user_code/todos/:no", async (req, res) => {
     if (todoRow == undefined) {
       res.status(404).json({
         resultCode: "F-1",
-        msg: "not found"
+        msg: "not found",
       });
       return;
     }
@@ -130,14 +130,14 @@ app.post("/:user_code/todos", async (req, res) => {
   if(!content) {
     res.status(404).json({
       resultCode: "F-1",
-      msg: "content required"
+      msg: "content required",
     });
   };
 
   if(!perform_date) {
     res.status(400).json({
       resultCode: "F-1",
-      msg: "perform_date required"
+      msg: "perform_date required",
     });
   };
 
@@ -182,6 +182,65 @@ app.post("/:user_code/todos", async (req, res) => {
     msg: `${justCreatedTodoRow.id}번 할일을 생성하였습니다.`,
     data: justCreatedTodoRow,
   });
+});
+
+// 데이터 수정
+app.patch("/:user_code/todos/:no", async (req, res) => {
+  const {user_code, no} = req.params;
+
+  const [[todoRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WEHER user_code = ?
+    AND no = ?
+    `,
+    [user_code, no]
+  );
+
+  // 오류메세지
+    if (todoRow == undefined) {
+      res.status(404).json({
+        resultCode: "F-1",
+        msg: "not found"
+      });
+      return;
+    }
+
+    const {
+      content = todoRow.content,
+      perform_date = todoRow.perform_date,
+      is_completed = todoRow.is_completed,
+    } = req.body;
+
+    await pool.query(
+      `
+      UPDATE todo
+      SET update_date = NOW(),
+      content = ?,
+      perform_date =?,
+      is_completed = ?,
+      WHERE user_code = ?,
+      AND no = ?
+      `,
+      [user_code, no, content, perform_date, is_completed]
+    );
+
+    const [[justCreatedTodoRow]] = await pool.query(
+      `
+      SELECT *
+      FROM todo
+      WEHER user_code = ?
+      AND no = ?,
+      `,
+      [user_code, no]
+    );
+
+    res.json({
+      resultCode: "S-1",
+      msg: `${justCreatedTodoRow.id}번 할일을 수정하였습니다.`,
+      data: justCreatedTodoRow,
+    });
 });
 
 //todos에 접속해서 id 1, 2의 데이터 가져오기.
