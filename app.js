@@ -22,6 +22,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+// codepen의 요청만 허락 끝.
 
 const port = 3000;
 
@@ -74,7 +75,45 @@ app.get("/:user_code/todos/:no", async (req, res) => {
   res.json({
     resultCode: "S-1",
     msg: "성공",
-    data: todorows,
+    data: todoRows,
+  });
+});
+
+// 단건 삭제
+app.delete("/:user_code/todos/:no", async (req, res) => {
+  const {user_code, no} = req.params;
+
+  const [todoRow] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WEHER user_code = ?
+    AND no = ?
+    `,
+    [user_code, no]
+  );
+
+  // 오류메세지
+    if (todoRow == undefined) {
+      res.status(404).json({
+        resultCode: "F-1",
+        msg: "not found"
+      });
+      return;
+    }
+
+    await pool.query(
+      `DELETE FROM todo
+      WHERE user_code = ?
+      AND no = ?
+      `,
+      [user_code, no]
+    );
+
+  // 성공메세지 
+  res.json({
+    resultCode: "S-1",
+    msg: `${no}번 할 일을 삭제하였습니다.`,
   });
 });
 
