@@ -15,6 +15,9 @@ const pool = mysql.createPool({
 });
 
 const app = express();
+// 데이터 생성을 위해서.
+app.use(express.json());
+
 // codepen의 요청만 허락하겠다.
 const corsOptions = {
   origin: "https://cdpn.io",
@@ -114,6 +117,70 @@ app.delete("/:user_code/todos/:no", async (req, res) => {
   res.json({
     resultCode: "S-1",
     msg: `${no}번 할 일을 삭제하였습니다.`,
+  });
+});
+
+// 데이터 생성하기
+app.post("/:user_code/todos", async (req, res) => {
+  const {user_code} = req.params;
+
+  const { content, perform_date, is_completed = 0 } = req.body;
+  // is_completed = 0. default 가 0.
+
+  if(!content) {
+    res.status(404).json({
+      resultCode: "F-1",
+      msg: "content required"
+    });
+  };
+
+  if(!perform_date) {
+    res.status(400).json({
+      resultCode: "F-1",
+      msg: "perform_date required"
+    });
+  };
+
+  const [[lastTodoRow]] = await pool.query(
+    `
+    SELECT no
+    FROM todo
+    WEHER user_code = ?
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [user_code]
+  );
+
+    const no =lastTodoRow?.no + 1 || 1;
+
+    const [insertTodoRs] =  await pool.query(
+      `
+      INSERT INTO todo
+      SET reg_date = NOW(),
+      update_date = NOW(),
+      user_code =?,
+      no = ?,
+      content = ?,
+      perform_date =?,
+      is_completed = ?,
+      `,
+      [user_code, no, content, perform_date, is_completed]
+    );
+
+      const [justCreatedTodoRow] = await pool.query(
+        `
+        SELECT *
+        FROM todo
+        WEHER id = ?
+        `,
+        [justCreatedTodoRow, insertId]
+      );
+
+  res.json({
+    resultCode: "S-1",
+    msg: `${justCreatedTodoRow.id}번 할일을 생성하였습니다.`,
+    data: justCreatedTodoRow,
   });
 });
 
